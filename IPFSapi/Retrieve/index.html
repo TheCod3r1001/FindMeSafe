@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrieve Text from IPFS</title>
+    <style>
+        html {
+            display: none;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        form,
+        .result {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 15px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Retrieve Text from IPFS</h2>
+        <form id="retrieveForm">
+            <label for="cidToRetrieve">Enter CID to Retrieve:</label>
+            <input type="text" id="cidToRetrieve" required>
+            <button type="submit">Retrieve from IPFS</button>
+        </form>
+        <div class="result" id="retrieveResult" style="display: none;">
+            <p><strong>Retrieved Text:</strong></p>
+            <p id="retrievedText"></p>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            async function getEncryptionKey() {
+                const response = await fetch('.env');
+                const data = await response.text();
+                const envData = data.split('\n');
+                let encryptionKey;
+
+                for (const line of envData) {
+                    const [key, value] = line.split('=');
+                    if (key.trim() === 'ENCRYPTION_KEY') {
+                        encryptionKey = value.trim();
+                        break;
+                    }
+                }
+
+                return encryptionKey
+            }
+
+            async function handleRetrieve(event) {
+                event.preventDefault();
+                const cidToRetrieve = document.getElementById('cidToRetrieve').value;
+                try {
+                    const response = await axios.get(`https://gateway.pinata.cloud/ipfs/${cidToRetrieve}`);
+                    let content = response.data;
+
+                    // Get the encryption key
+                    const encryptionKey = await getEncryptionKey();
+
+                    // Decrypt the content using CryptoJS AES
+                    content = CryptoJS.AES.decrypt(content, encryptionKey).toString(CryptoJS.enc.Utf8);
+
+                    document.getElementById('retrievedText').innerText = content;
+                    document.getElementById('retrieveResult').style.display = 'block';
+
+                    window.location.href = "/ChildIdentity?data=" + content + "&ecid=" + cidToRetrieve;
+                } catch (error) {
+                    console.error('Error retrieving from IPFS:', error);
+                    alert('An error occurred while retrieving. Please check the console for details.');
+                }
+            }
+
+            // Function to extract CID from URL parameters
+            function extractCIDFromURL() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('ecid');
+            }
+
+            // Set default value for CID input field if ecid is present in URL
+            const defaultCID = extractCIDFromURL();
+            if (defaultCID) {
+                document.getElementById('cidToRetrieve').value = defaultCID;
+                handleRetrieve(new Event('submit'));
+            }
+
+            document.getElementById('retrieveForm').addEventListener('submit', handleRetrieve);
+        });
+    </script>
+</body>
+
+</html>

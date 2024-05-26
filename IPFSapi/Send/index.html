@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPFS Text Upload and Retrieve</title>
+    <style>
+        /* Hide all HTML elements */
+        div {
+            display: none;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+</head>
+
+<body>
+    LOADING
+    <div class="container">
+        <h2>IPFS Text Upload and Retrieve</h2>
+        <form id="uploadForm" style="display: none;">
+            <label for="textToUpload">Enter Text to Upload:</label>
+            <textarea id="textToUpload" rows="5" required></textarea>
+            <button type="submit">Upload to IPFS</button>
+        </form>
+        <div class="result" id="uploadResult" style="display: none;">
+            <p><strong>Uploaded CID:</strong> <span id="cid"></span></p>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const pinataBearerToken = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI3OGZmYjhkYi04ZWU5LTQ2N2YtOTM2Mi1hNzg3MjY3NGU0ZDAiLCJlbWFpbCI6InRoZWNvZDNyMTAwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiNTUxNTgxMTM4NTNjOWE3Yzc5MzAiLCJzY29wZWRLZXlTZWNyZXQiOiJhODhlMTZjYzBhYzAwZmM2MzdlYmM4MDRhYmM0ZWZmMzE0OTFkMDIzNjc3YjM2Mjc2OGI5ODYxNGZlZmViNTZjIiwiaWF0IjoxNzE2MTMxODc1fQ.4HPPQXlbRuwqdjsYHjjg8NWJ4a-4US3vQR2tLAwD_Q4'; // Replace with your Pinata Bearer Token
+
+            async function handleUpload() {
+                let jsonData = ''; // Use let instead of const
+                const urlParams = new URLSearchParams(window.location.search);
+                const jsonDataParam = urlParams.get('data');
+                if (jsonDataParam) {
+                    jsonData = JSON.stringify(JSON.parse(decodeURIComponent(jsonDataParam)), null, 4);
+                }
+                // Create a Blob from the JSON string
+                console.log(jsonData)
+                console.log(typeof jsonData)
+
+                const response = await fetch('.env');
+                const d = await response.text();
+                const envData = d.split('\n');
+                let encryptionKey;
+
+                for (const line of envData) {
+                    const [key, value] = line.split('=');
+                    if (key.trim() === 'ENCRYPTION_KEY') {
+                        encryptionKey = value.trim();
+                        break;
+                    }
+                }
+
+                // Encrypt the CID using CryptoJS AES
+                jsonData = CryptoJS.AES.encrypt(jsonData.toString(), encryptionKey).toString();
+
+                console.log(jsonData);
+
+                const blob = new Blob([jsonData], { type: 'text/plain' });
+                const data = new FormData();
+                data.append('file', blob); // Append Blob to FormData
+                // data.append('file', new Blob([jsonData], { type: 'text/plain' }));
+                console.log(data);
+                try {
+                    const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
+                        maxBodyLength: 'Infinity',
+                        headers: {
+                            'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
+                            'Authorization': pinataBearerToken
+                        }
+                    });
+                    const cid = response.data.IpfsHash;
+                    console.log('Text uploaded successfully! CID: ' + cid);
+                    encryptAndPrintCID(cid); // Encrypt and print the CID
+                } catch (error) {
+                    console.error('Error uploading to IPFS:', error);
+                    // Additional error handling logic
+                }
+            }
+
+            // Function to encrypt the CID and print ECID
+            async function encryptAndPrintCID(cid) {
+                // Read the encryption key from .env file
+                const response = await fetch('.env');
+                const data = await response.text();
+                const envData = data.split('\n');
+                let encryptionKey;
+
+                for (const line of envData) {
+                    const [key, value] = line.split('=');
+                    if (key.trim() === 'ENCRYPTION_KEY') {
+                        encryptionKey = value.trim();
+                        break;
+                    }
+                }
+
+                // Encrypt the CID using CryptoJS AES
+                let ecid = CryptoJS.AES.encrypt(cid, encryptionKey).toString();
+                console.log('Encrypted CID (ECID): ' + ecid);
+
+                const formData = new FormData();
+                formData.append('ecid', cid);
+
+                try {
+                    await axios.post('/IPFSapi/Send/upload.php', formData);
+                    console.log('ECID posted to upload.php successfully!');
+                    ecid = ecid.replace(/\//g, '_')
+                    window.location.href = "/FaceRecognition/uploadFace.html?ecid=" + cid;
+                } catch (error) {
+                    console.error('Error posting ECID to upload.php:', error);
+                    // Additional error handling logic
+                }
+            }
+
+            // Automatically run handleUpload function
+            handleUpload();
+        });
+    </script>
+</body>
+
+</html>

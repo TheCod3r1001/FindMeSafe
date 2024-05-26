@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Face</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Scan Face</h1>
+        <h3>Instructions: </h3>
+        <p>1. Remove Glasses<br>
+            2. Make Sure there is only 1 person in the frame<br>
+            3. Make sure you are in a well-lit location</p>
+        <div class="camera-frame" id="camera-frame">
+            <video id="video" autoplay></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+        </div>
+        <button id="take-photo" onclick="takePhoto()">Take Photo</button>
+        <button id="retake-photo" style="display: none;" onclick="retakePhoto()">Retake Photo</button>
+        <button id="send-photo" style="display: none;" onclick="sendPhoto()">Scan Face</button>
+    </div>
+    <script src="scan_face.js"></script>
+</body>
+</html>

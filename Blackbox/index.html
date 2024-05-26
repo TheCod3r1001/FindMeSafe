@@ -1,0 +1,43 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Decrypt and Display Image</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" /> <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <style>
+        /* Add some basic styling to the page */
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Decrypt and Display Image</h1>
+    <div id="image-container"></div>
+
+    <!-- Include CryptoJS library -->
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+
+    <script>
+        // Get the encrypted image data from the server
+        fetch('encrypted_face.png')
+            .then(response => response.arrayBuffer())
+            .then(encryptedImageData => {
+                // Decrypt the image data using the Fernet algorithm
+                const key = 'your_encryption_key_here'; // Replace with the actual key used for encryption
+                const decryptedImageData = cryptojs.AES.decrypt(encryptedImageData, key);
+
+                // Create a new image element and set its src to the decrypted image data
+                const image = new Image();
+                image.src = URL.createObjectURL(new Blob([decryptedImageData.toString(cryptojs.enc.Utf8)], { type: 'image/png' }));
+                document.getElementById('image-container').appendChild(image);
+            });
+    </script>
+</body>
+</html>
